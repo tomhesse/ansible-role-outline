@@ -1,0 +1,138 @@
+---
+- name: Ensure outline docker network exists
+  community.docker.docker_network:
+    name: "{{ outline_docker_network }}"
+
+- name: Ensure docker volumes exist
+  block:
+    - name: Ensure postgres docker volume exists
+      community.docker.docker_volume:
+        name: "{{ outline_docker_postgres_volume }}"
+
+    - name: Ensure outline docker volumes exists
+      community.docker.docker_volume:
+        name: "{{ outline_docker_outline_volume }}"
+
+- name: Ensure containers are running
+  block:
+    - name: Ensure postgres is running
+      community.docker.docker_container:
+        name: "{{ outline_docker_postgres_container }}"
+        image: "{{ outline_docker_postgres_image_name }}:{{ outline_docker_postgres_image_tag }}"
+        volumes:
+          - "{{ outline_docker_postgres_volume }}:/var/lib/postgresql/data"
+        networks:
+          - name: "{{ outline_docker_network }}"
+        healthcheck:
+          test: ["CMD", "pg_isready", "-d", "{{ outline_docker_postgres_database }}", "-U", "{{ outline_docker_postgres_user }}"]
+          interval: 30s
+          timeout: 20s
+          retries: 3
+        env:
+          POSTGRES_USER: "{{ outline_docker_postgres_user | string }}"
+          POSTGRES_PASSWORD: "{{ outline_docker_postgres_password | string }}"
+          POSTGRES_DB: "{{ outline_docker_postgres_database | string }}"
+        state: healthy
+        restart_policy: unless-stopped
+
+    - name: Ensure redis is running
+      community.docker.docker_container:
+        name: "{{ outline_docker_redis_container }}"
+        image: "{{ outline_docker_redis_image_name }}:{{ outline_docker_redis_image_tag }}"
+        networks:
+          - name: "{{ outline_docker_network }}"
+        healthcheck:
+          test: ["CMD", "redis-cli", "ping"]
+          interval: 10s
+          timeout: 30s
+          retries: 3
+        state: healthy
+        restart_policy: unless-stopped
+
+    - name: Ensure outline is running
+      community.docker.docker_container:
+        name: "{{ outline_docker_outline_container }}"
+        image: "{{ outline_docker_outline_image_name }}:{{ outline_docker_outline_image_tag }}"
+        networks:
+          - name: "{{ outline_docker_network }}"
+        ports:
+          - "3000:{{ outline_docker_outline_outline_port }}"
+        volumes:
+          - "{{ outline_docker_outline_volume }}:{{ outline_docker_outline_file_storage_local_root_dir }}"
+        env:
+          # Required
+          NODE_ENV: "{{ outline_docker_outline_node_environment }}"
+          SECRET_KEY: "{{ outline_docker_outline_secret_key }}"
+          UTILS_SECRET: "{{ outline_docker_outline_utils_key }}"
+          DATABASE_URL: "{{ outline_docker_outline_database_url }}"
+          DATABASE_CONNECTION_POOL_MIN: "{{ outline_docker_outline_database_connection_pool_min | default(omit) }}"
+          DATABASE_CONNECTION_POOL_MAX: "{{ outline_docker_outline_database_connection_pool_max | default(omit) }}"
+          PGSSLMODE: "{{ outline_docker_outline_pgsslmode }}"
+          REDIS_URL: "{{ outline_docker_outline_redis_url }}"
+          URL: "{{ outline_docker_outline_outline_url }}"
+          PORT: "{{ outline_docker_outline_outline_port | string }}"
+          COLLABORATION_URL: "{{ outline_docker_outline_collaboration_url | default(omit) }}"
+          FILE_STORAGE: local
+          FILE_STORAGE_LOCAL_ROOT_DIR: "{{ outline_docker_outline_file_storage_local_root_dir }}"
+          FILE_STORAGE_UPLOAD_MAX_SIZE: "{{ outline_docker_outline_file_storage_upload_max_size | string }}"
+          FILE_STORAGE_IMPORT_MAX_SIZE: "{{ outline_docker_outline_file_storage_import_max_size | default(omit) | string }}"
+          FILE_STORAGE_WORKSPACE_IMPORT_MAX_SIZE: "{{ outline_docker_outline_file_storage_workspace_max_size | default(omit) | string }}"
+          # Authentication
+          SLACK_CLIENT_ID: "{{ outline_docker_outline_slack_client_id | default(omit) }}"
+          SLACK_CLIENT_SECRET: "{{ outline_docker_outline_slack_client_secret | default(omit) }}"
+          GOOGLE_CLIENT_ID: "{{ outline_docker_outline_google_client_id | default(omit) }}"
+          GOOGLE_CLIENT_SECRET: "{{ outline_docker_outline_google_client_secret | default(omit) }}"
+          AZURE_CLIENT_ID: "{{ outline_docker_outline_azure_client_id | default(omit) }}"
+          AZURE_CLIENT_SECRET: "{{ outline_docker_outline_azure_client_secret | default(omit) }}"
+          AZURE_RESOURCE_APP_ID: "{{ outline_docker_outline_azure_resource_app_id | default(omit) }}"
+          OIDC_CLIENT_ID: "{{ outline_docker_outline_oidc_client_id | default(omit) }}"
+          OIDC_CLIENT_SECRET: "{{ outline_docker_outline_oidc_client_secret | default(omit) }}"
+          OIDC_AUTH_URI: "{{ outline_docker_outline_oidc_auth_uri | default(omit) }}"
+          OIDC_TOKEN_URI: "{{ outline_docker_outline_oidc_token_uri | default(omit) }}"
+          OIDC_USERINFO_URI: "{{ outline_docker_outline_oidc_userinfo_uri | default(omit) }}"
+          OIDC_DISABLE_REDIRECT: "{{ outline_docker_outline_oidc_disable_redirect | default(omit) | string | lower }}"
+          OIDC_LOGOUT_URI: "{{ outline_docker_outline_oidc_logout_uri | default(omit) }}"
+          OIDC_USERNAME_CLAIM: "{{ outline_docker_outline_oidc_username_claim | default(omit) }}"
+          OIDC_DISPLAY_NAME: "{{ outline_docker_outline_oidc_display_name | default(omit) }}"
+          OIDC_SCOPES: "{{ outline_docker_outline_oidc_scopes | default(omit) }}"
+          GITHUB_CLIENT_ID: "{{ outline_docker_outline_github_client_id | default(omit) }}"
+          GITHUB_CLIENT_SECRET: "{{ outline_docker_outline_github_client_secret | default(omit) }}"
+          GITHUB_APP_NAME: "{{ outline_docker_outline_github_app_name | default(omit) }}"
+          GITHUB_APP_ID: "{{ outline_docker_outline_github_app_id | default(omit) }}"
+          GITHUB_APP_PRIVATE_KEY: "{{ outline_docker_outline_github_app_private_key | default(omit) }}"
+          DISCORD_CLIENT_ID: "{{ outline_docker_outline_discord_client_id | default(omit) }}"
+          DISCORD_CLIENT_SECRET: "{{ outline_docker_outline_discord_client_secret | default(omit) }}"
+          DISCORD_SERVER_ID: "{{ outline_docker_outline_discord_server_id | default(omit) }}"
+          DISCORD_SERVER_ROLES: "{{ outline_docker_outline_discord_server_roles | default(omit) }}"
+          # Optional
+          SSL_KEY: "{{ outline_docker_outline_ssl_key | default(omit) }}"
+          SSL_CERT: "{{ outline_docker_outline_ssl_cert | default(omit) }}"
+          CDN_URL: "{{ outline_docker_outline_cdn_url | default(omit) }}"
+          FORCE_HTTPS: "{{ outline_docker_outline_force_https | default(omit) | string | lower }}"
+          ENABLE_UPDATES: "{{ outline_docker_outline_enable_updates | default(omit) | string | lower }}"
+          WEB_CONCURRENCY: "{{ outline_docker_outline_web_concurrency | default(omit) | string }}"
+          DEBUG: "{{ outline_docker_outline_debug | default(omit) }}"
+          LOG_LEVEL: "{{ outline_docker_outline_log_level | default(omit) }}"
+          SLACK_VERIFICATION_TOKEN: "{{ outline_docker_outline_slack_verification_token | default(omit) }}"
+          SLACK_APP_ID: "{{ outline_docker_outline_slack_app_id | default(omit) }}"
+          SLACK_MESSAGE_ACTIONS: "{{ outline_docker_outline_slack_message_actions | default(omit) }}"
+          DROPBOX_APP_KEY: "{{ outline_docker_outline_dropbox_app_key | default(omit) }}"
+          SENTRY_DSN: "{{ outline_docker_outline_sentry_dsn | default(omit) }}"
+          SENTRY_TUNNEL: "{{ outline_docker_outline_sentry_tunnel | default(omit) }}"
+          SMTP_HOST: "{{ outline_docker_outline_smtp_host | default(omit) }}"
+          SMTP_PORT: "{{ outline_docker_outline_smtp_port | default(omit) | string }}"
+          SMTP_USERNAME: "{{ outline_docker_outline_smtp_username | default(omit) }}"
+          SMTP_PASSWORD: "{{ outline_docker_outline_smtp_password | default(omit) }}"
+          SMTP_FROM_EMAIL: "{{ outline_docker_outline_smtp_from_email | default(omit) }}"
+          SMTP_REPLY_EMAIL: "{{ outline_docker_outline_smtp_reply_email | default(omit) }}"
+          SMTP_TLS_CIPHERS: "{{ outline_docker_outline_smtp_tls_ciphers | default(omit) }}"
+          SMTP_SECURE: "{{ outline_docker_outline_smtp_secure | default(omit) | string | lower }}"
+          SMTP_NAME: "{{ outline_docker_outline_smtp_name | default(omit) }}"
+          DEFAULT_LANGUAGE: "{{ outline_docker_outline_default_language | default(omit) }}"
+          RATE_LIMITER_ENABLED: "{{ outline_docker_outline_rate_limiter_enabled | default(omit) | string | lower }}"
+          RATE_LIMITER_REQUESTS: "{{ outline_docker_outline_rate_limiter_requests | default(omit) | string }}"
+          RATE_LIMITER_DURATION_WINDOW: "{{ outline_docker_outline_rate_limiter_duration_window | default(omit) | string }}"
+          IFRAMELY_URL: "{{ outline_docker_outline_iframely_url | default(omit) }}"
+          IFRAMELY_API_KEY: "{{ outline_docker_outline_iframely_api_key | default(omit) }}"
+        state: healthy
+        restart_policy: unless-stopped

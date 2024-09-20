@@ -1,0 +1,8 @@
+---
+- name: Preflight
+  ansible.builtin.include_tasks:
+    file: preflight.yml
+
+- name: Deploy
+  ansible.builtin.include_tasks:
+    file: deploy.yml

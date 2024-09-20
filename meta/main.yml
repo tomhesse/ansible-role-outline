@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: "outline"
+  author: "tomhesse"
+  description: "Install and configure outline"
+  license: "license (BSD, MIT)"
+  min_ansible_version: "2.9"
+  platforms:
+    - name: "Ubuntu"
+      versions:
+        - "focal"
+        - "jammy"
+        - "noble"
+    - name: "Debian"
+      versions:
+        - "buster"
+        - "bullseye"
+        - "bookworm"
+  galaxy_tags:
+    - "wiki"
+    - "knowledge"
+    - "docs"

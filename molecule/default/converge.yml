@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  roles:
+    - role: tomhesse.outline
+      vars:
+        outline_docker_outline_secret_key: 789d24e2b5974742a31ebe23eba6ef943800c7be2a7c11faf1576f97179852e3
+        outline_docker_outline_utils_key: 789d24e2b5974742a31ebe23eba6ef943800c7be2a7c11faf1576f97179852e3
+        outline_docker_postgres_password: securepassword
